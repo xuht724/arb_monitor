@@ -35,6 +35,7 @@ export class EventDecoder {
                 strict: false
             })
             events.push({
+                address: log.address,
                 from: topics.args.src ? topics.args.src : UNKNOWN,
                 to: topics.args.dst ? topics.args.dst : UNKNOWN,
                 value: topics.args.wad ? topics.args.wad : 0n
