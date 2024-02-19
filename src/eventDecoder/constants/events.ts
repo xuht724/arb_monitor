@@ -6,6 +6,10 @@ export const EventsSignatureMap = {
     Curve_TokenExchange: "0x8b3e96f2b889fa771c53c981b40daf005f63f637f1869f707052d15a3dd97140",
 } as const
 
+export enum SwapEvent {
+    UNIV3_Swap = 'UniV3_Swap',
+}
+
 export const SwapEventABIMap = {
     UniV3_Swap: {
         "anonymous": false,
@@ -136,7 +140,7 @@ export const SwapEventABIMap = {
         "name": "Swap",
         "type": "event"
     },
-    TokenExchange: {
+    Curve_TokenExchange: {
         "name": "TokenExchange",
         "inputs": [
             {
