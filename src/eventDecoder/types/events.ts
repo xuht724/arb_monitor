@@ -1,4 +1,4 @@
-
+import { SwapEvent } from "../constants/events"
 
 export type TransferEvent = {
     address: string,
@@ -7,3 +7,45 @@ export type TransferEvent = {
     value: bigint
 }
 
+export type UniV2SwapEvent = {
+    protocol: SwapEvent,
+    address: string,
+    from: string,
+    to: string,
+    amount0In: bigint,
+    amount0Out: bigint,
+    amount1In: bigint,
+    amount1Out: bigint
+}
+
+export type UniV3SwapEvent = {
+    protocol: SwapEvent,
+    address: string,
+    from: string,
+    to: string,
+    amount0: bigint,
+    amount1: bigint,
+    sqrtPriceX96: bigint,
+    liquidity: bigint,
+    tick: number
+}
+
+export type BalancerVaultSwapEvent = {
+    protocol: SwapEvent,
+    address: string,
+    poolId: string,
+    tokenIn: string,
+    tokenOut: string,
+    amountIn: bigint,
+    amountOut: bigint
+}
+
+export type CurveTokenExchangeEvent = {
+    protocol: SwapEvent,
+    address: string,
+    buyer: string,
+    sold_id: number,
+    tokens_sold: bigint,
+    bought_id: number,
+    tokens_bought: bigint
+}

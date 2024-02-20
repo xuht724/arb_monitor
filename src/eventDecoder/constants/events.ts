@@ -8,6 +8,9 @@ export const EventsSignatureMap = {
 
 export enum SwapEvent {
     UNIV3_Swap = 'UniV3_Swap',
+    UNIV2_Swap = 'UniV2_Swap',
+    BALANCERVAULT_Swap = 'BalancerVault_Swap',
+    CURVE_TokenExchange = 'Curve_TokenExchange'
 }
 
 export const SwapEventABIMap = {
