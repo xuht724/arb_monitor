@@ -5,11 +5,10 @@ import {
 import { mainnet } from "viem/chains";
 import { TransferEvent, UniV2SwapEvent, UniV3SwapEvent, BalancerVaultSwapEvent, CurveTokenExchangeEvent } from './types/events';
 import { EventDecoder } from "./eventDecoder";
-import { SwapEvent } from './constants/events';
+import { SwapEvent, PoolType } from './constants/events';
+import { HTTP_NODE_URL } from '../config';
 
 async function main(){
-    const HTTP_NODE_URL =
-    "https://eth-mainnet.g.alchemy.com/v2/AmGhouGifK4fNQtvtdZI_wQX1pdgHxQo";
     const publicClient = createPublicClient({
         chain: mainnet,
         transport: http(HTTP_NODE_URL),
@@ -40,11 +39,12 @@ async function main(){
     tx_receipt = await publicClient.getTransactionReceipt({
         hash: `0x${testHashes[2]}`
     });
-    let swapEvents = EventDecoder.decodeTrxSwapEvents(tx_receipt.logs);
+    let swapEvents = await EventDecoder.decodeTrxSwapEvents(tx_receipt.logs);
     if(swapEvents.length == 0) console.log("test failed, nothing returned");
     else{
         for(let e of swapEvents){
-            if(e.protocol == SwapEvent.UNIV2_Swap){
+            if(e.poolType == PoolType.UNISWAP_V2_LIKE_POOL){
+                console.log("protocol: ", e.protocol);
                 console.log("address: ", e.address);
                 console.log("from: ", e.from);
                 console.log("to: ", e.to);
@@ -52,7 +52,6 @@ async function main(){
                 console.log("amount0Out: ", e.amount0Out);
                 console.log("amount1In: ", e.amount1In);
                 console.log("amount1Out: ", e.amount1Out);
-                break;
             }
         } 
     }
@@ -61,11 +60,12 @@ async function main(){
     tx_receipt = await publicClient.getTransactionReceipt({
         hash: `0x${testHashes[0]}`
     });
-    swapEvents = EventDecoder.decodeTrxSwapEvents(tx_receipt.logs);
+    swapEvents = await EventDecoder.decodeTrxSwapEvents(tx_receipt.logs);
     if(swapEvents.length == 0) console.log("test failed, nothing returned");
     else{
         for(let e of swapEvents){
-            if(e.protocol == SwapEvent.UNIV3_Swap){
+            if(e.poolType == PoolType.UNISWAP_V3_LIKE_POOL){
+                console.log("protocol: ", e.protocol);
                 console.log("address: ", e.address);
                 console.log("from: ", e.from);
                 console.log("to: ", e.to);
@@ -83,11 +83,12 @@ async function main(){
     tx_receipt = await publicClient.getTransactionReceipt({
         hash: `0x${testHashes[1]}`
     });
-    swapEvents = EventDecoder.decodeTrxSwapEvents(tx_receipt.logs);
+    swapEvents = await EventDecoder.decodeTrxSwapEvents(tx_receipt.logs);
     if(swapEvents.length == 0) console.log("test failed, nothing returned");
     else{
         for(let e of swapEvents){
-            if(e.protocol == SwapEvent.BALANCERVAULT_Swap){
+            if(e.poolType == PoolType.BALANCER_POOL){
+                console.log("protocol: ", e.protocol);
                 console.log("address: ", e.address);
                 console.log("poolId: ", e.poolId);
                 console.log("tokenIn: ", e.tokenIn);
@@ -103,11 +104,12 @@ async function main(){
     tx_receipt = await publicClient.getTransactionReceipt({
         hash: `0x${testHashes[3]}`
     });
-    swapEvents = EventDecoder.decodeTrxSwapEvents(tx_receipt.logs);
+    swapEvents = await EventDecoder.decodeTrxSwapEvents(tx_receipt.logs);
     if(swapEvents.length == 0) console.log("test failed, nothing returned");
     else{
         for(let e of swapEvents){
-            if(e.protocol == SwapEvent.CURVE_TokenExchange){
+            if(e.poolType == PoolType.CURVE_POOL){
+                console.log("protocol: ", e.protocol);
                 console.log("address: ", e.address);
                 console.log("buyer: ", e.buyer);
                 console.log("sold_id: ", e.sold_id);

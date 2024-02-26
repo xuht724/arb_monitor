@@ -1,8 +1,26 @@
 import { Log, decodeEventLog } from 'viem';
 import { TransferEvent } from './types/events';
 import { UNKNOWN } from '../constants/common'
-import { EventsSignatureMap, SwapEvent, SwapEventABIMap } from './constants/events';
+import { EventsSignatureMap, SwapEvent, SwapEventABIMap, PoolType, Protocol } from './constants/events';
+import { sqlite_database } from '../config';
+import { SqliteHelper } from '../sqliteHelper';
+
 export class EventDecoder {
+    static async decode(logs: Log[]){
+        const transferEvents = EventDecoder.decodeErc20Transfers(logs);
+        const swapEvents = await EventDecoder.decodeTrxSwapEvents(logs);
+        let tokenSet: string[] = [], poolSet: string[] = [];
+        for(let event of transferEvents){
+            if(!tokenSet.includes(event.address))
+                tokenSet.push(event.address);
+        }
+        for(let event of swapEvents){
+            if(!tokenSet.includes(event.address))
+                poolSet.push(event.address);
+        }
+        return [transferEvents, swapEvents, tokenSet, poolSet];
+    }
+    
     static decodeErc20Transfers(logs: Log[]): TransferEvent[] {
         let events: TransferEvent[] = []
         for (const log of logs) {
@@ -40,8 +58,8 @@ export class EventDecoder {
                     })
                     events.push({
                         address: log.address,
-                        from: res.args.src ? res.args.src : UNKNOWN,
-                        to: res.args.dst ? res.args.dst : UNKNOWN,
+                        from: res.args.src ? res.args.src.toLowerCase() : UNKNOWN,
+                        to: res.args.dst ? res.args.dst.toLowerCase() : UNKNOWN,
                         value: res.args.wad ? res.args.wad : 0n
                     })
                 }
@@ -52,8 +70,8 @@ export class EventDecoder {
         return events;
     }
 
-
-    static decodeTrxSwapEvents(logs: Log[]): any[] {
+    static async decodeTrxSwapEvents(logs: Log[]): Promise<any[]> {
+        const sqliteHelper = new SqliteHelper(sqlite_database);
         let events: any[] = [];
         for (const log of logs) {
             if(log.topics.length > 0){
@@ -65,11 +83,13 @@ export class EventDecoder {
                         topics: log.topics,
                         strict: false
                     })
+                    const p = await sqliteHelper.getV2ProtocolByAddress(log.address);
                     events.push({
-                        protocol: SwapEvent.UNIV2_Swap,
+                        poolType: PoolType.UNISWAP_V2_LIKE_POOL,
+                        protocol: p,
                         address: log.address,
-                        from: res.args.sender ? res.args.sender : UNKNOWN,
-                        to: res.args.to ? res.args.to : UNKNOWN,
+                        from: res.args.sender ? res.args.sender.toLowerCase() : UNKNOWN,
+                        to: res.args.to ? res.args.to.toLowerCase() : UNKNOWN,
                         amount0In: res.args.amount0In ? res.args.amount0In : 0n,
                         amount0Out: res.args.amount0Out ? res.args.amount0Out : 0n,
                         amount1In: res.args.amount1In ? res.args.amount1In : 0n,
@@ -82,11 +102,13 @@ export class EventDecoder {
                         topics: log.topics,
                         strict: false
                     })
+                    const p = await sqliteHelper.getV3ProtocolByAddress(log.address);
                     events.push({
-                        protocol: SwapEvent.UNIV3_Swap,
+                        poolType: PoolType.UNISWAP_V3_LIKE_POOL,
+                        protocol: p,
                         address: log.address,
-                        from: res.args.sender ? res.args.sender : UNKNOWN,
-                        to: res.args.recipient ? res.args.recipient : UNKNOWN,
+                        from: res.args.sender ? res.args.sender.toLowerCase() : UNKNOWN,
+                        to: res.args.recipient ? res.args.recipient.toLowerCase() : UNKNOWN,
                         amount0: res.args.amount0 ? res.args.amount0 : 0n,
                         amount1: res.args.amount1 ? res.args.amount1 : 0n,
                         sqrtPriceX96: res.args.sqrtPriceX96 ? res.args.sqrtPriceX96 : 0n,
@@ -100,8 +122,10 @@ export class EventDecoder {
                         topics: log.topics,
                         strict: false
                     })
+                    const p = await sqliteHelper.getBalancerProtocolByAddress(log.address);
                     events.push({
-                        protocol: SwapEvent.BALANCERVAULT_Swap,
+                        poolType: PoolType.BALANCER_POOL,
+                        protocol: p,
                         address: log.address,
                         poolId: res.args.poolId ? res.args.poolId : UNKNOWN,
                         tokenIn: res.args.tokenIn ? res.args.tokenIn : UNKNOWN,
@@ -117,7 +141,8 @@ export class EventDecoder {
                         strict: false
                     })
                     events.push({
-                        protocol: SwapEvent.CURVE_TokenExchange,
+                        poolType: PoolType.CURVE_POOL,
+                        protocol: "curve",
                         address: log.address,
                         buyer: res.args.buyer ? res.args.buyer : UNKNOWN,
                         sold_id: res.args.sold_id ? res.args.sold_id : 0n,

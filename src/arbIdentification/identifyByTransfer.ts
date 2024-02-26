@@ -24,14 +24,13 @@ export class identifyByTransfer{
         });
     }
 
-    public async identifyArbByTransfer(txReceipt: any): Promise<[string[][], string[]] | [undefined, undefined]>{
+    public async identifyArbByTransfer(txReceipt: any, transferEvents: TransferEvent[]): Promise<[boolean, string[][], string[], bigint[]] | [boolean, undefined, undefined, undefined]>{
         let transferLogs = []
         for(let log of txReceipt.logs){
             if(log.topics[0] == EventsSignatureMap.Erc20_Transfer){
                 transferLogs.push(log);
             }
         }
-        const transferEvents = EventDecoder.decodeErc20Transfers(transferLogs);
         const [netValues, addressRelatedTokensMap] = this.calculateNetValues(transferLogs, transferEvents);
 
         let graph = new Map<string, string[]>();
@@ -49,7 +48,7 @@ export class identifyByTransfer{
                         if(!graph.has(transferLogs[i].address)) graph.set(transferLogs[i].address, []);
                     }
                     
-                    if(transferEvents[i].to == transferEvents[j].from && addressRelatedTokensMap.get(transferEvents[i].to)!.length < 3){
+                    else if(transferEvents[i].to == transferEvents[j].from && addressRelatedTokensMap.get(transferEvents[i].to)!.length < 3){
                         if(graph.has(transferLogs[i].address)){
                             let temp = graph.get(transferLogs[i].address);
                             if(!temp?.includes(transferLogs[j].address)) temp?.push(transferLogs[j].address)
@@ -65,8 +64,8 @@ export class identifyByTransfer{
 
         const johnson = new AllCyclesInDirectedGraphJohnson();
         const circles = johnson.identifyCircle(graph);
-        if(circles.length == 0) return [undefined, undefined];
-        let pivots = [];
+        if(circles.length == 0) return [false, undefined, undefined, undefined];
+        let pivots = [], maxProfits = [];
         for(let circle of circles){
             let maxProfit = 0n;
             let pivot = ''
@@ -83,8 +82,9 @@ export class identifyByTransfer{
                 
             }
             pivots.push(pivot);
+            maxProfits.push(maxProfit);
         }
-        return [circles, pivots];
+        return [true, circles, pivots, maxProfits];
     }
 
     public calculateNetValues(transferLogs: Log[], transferEvents: TransferEvent[]): [Map<string, Map<string, bigint>>, Map<string, string[]>]{

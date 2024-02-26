@@ -1,4 +1,4 @@
-import { SwapEvent } from "../constants/events"
+import { SwapEvent, PoolType, Protocol } from "../constants/events"
 
 export type TransferEvent = {
     address: string,
@@ -8,7 +8,8 @@ export type TransferEvent = {
 }
 
 export type UniV2SwapEvent = {
-    protocol: SwapEvent,
+    poolType: PoolType,
+    protocol: Protocol,
     address: string,
     from: string,
     to: string,
@@ -19,7 +20,8 @@ export type UniV2SwapEvent = {
 }
 
 export type UniV3SwapEvent = {
-    protocol: SwapEvent,
+    poolType: PoolType,
+    protocol: Protocol,
     address: string,
     from: string,
     to: string,
@@ -31,7 +33,8 @@ export type UniV3SwapEvent = {
 }
 
 export type BalancerVaultSwapEvent = {
-    protocol: SwapEvent,
+    poolType: PoolType,
+    protocol: Protocol,
     address: string,
     poolId: string,
     tokenIn: string,
@@ -41,7 +44,8 @@ export type BalancerVaultSwapEvent = {
 }
 
 export type CurveTokenExchangeEvent = {
-    protocol: SwapEvent,
+    poolType: PoolType,
+    protocol: Protocol,
     address: string,
     buyer: string,
     sold_id: number,
