@@ -4,6 +4,7 @@ export const EventsSignatureMap = {
     UniV2_Swap: '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822',
     BalancerVault_Swap: "0x2170c741c41531aec20e7c107c24eecfdd15e69c9bb0a8dd37b1840b9e0b207b",
     Curve_TokenExchange: "0x8b3e96f2b889fa771c53c981b40daf005f63f637f1869f707052d15a3dd97140",
+    //OneInch_
 } as const
 
 export enum SwapEvent {
@@ -26,15 +27,9 @@ export enum Protocol {
 }
 
 export enum PoolType {
-    BALANCER_WEIGHTED_POOL = "balancer_weighted_pool",
-    BALANCER_LIQUIDITY_BOOTSTRAPPING_POOL = "balancer_liquidity_bootstrapping_pool",
-    BALANCER_POOL = "balancer_pool",
-
     UNISWAP_V2_LIKE_POOL = "uniswap_v2_like_pool",
     UNISWAP_V3_LIKE_POOL = "uniswap_v3_like_pool",
-
-    CURVE_STABLE_SWAP_POOL = "curve_stable_swap_pool",
-    CURVE_CRYPTO_SWAP_POOL = "curve_crypto_swap_pool",
+    BALANCER_POOL = "balancer_pool",
     CURVE_POOL = "curve_pool"
 }
 
