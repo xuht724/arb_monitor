@@ -546,7 +546,7 @@ export class SqliteHelper {
         const query = "SELECT protocolName FROM V2Edge WHERE address = ?";
         try {
             const rows = await this.runQuery(query, [address]);
-            if(rows.length > 0) return rows[0].protocolName;
+            if (rows.length > 0) return rows[0].protocolName;
             else return "unknown";
         } catch (error) {
             // this.logger.error('Error fetching V3Edges:', error.message);
@@ -558,7 +558,7 @@ export class SqliteHelper {
         const query = "SELECT protocolName FROM V3Edge WHERE address = ?";
         try {
             const rows = await this.runQuery(query, [address]);
-            if(rows.length > 0)
+            if (rows.length > 0)
                 return rows[0].protocolName;
             else return "unknown";
         } catch (error) {
@@ -571,7 +571,7 @@ export class SqliteHelper {
         const query = "SELECT protocolName FROM BalancerWeightedPool WHERE address = ?";
         try {
             const rows = await this.runQuery(query, [address]);
-            if(rows.length > 0)
+            if (rows.length > 0)
                 return rows[0].protocolName;
             else return "unknown";
         } catch (error) {

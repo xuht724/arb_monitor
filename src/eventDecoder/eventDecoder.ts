@@ -6,21 +6,21 @@ import { sqlite_database } from '../config';
 import { SqliteHelper } from '../sqliteHelper';
 
 export class EventDecoder {
-    static async decode(logs: Log[]){
+    static async decode(logs: Log[]) {
         const transferEvents = EventDecoder.decodeErc20Transfers(logs);
         const swapEvents = await EventDecoder.decodeTrxSwapEvents(logs);
         let tokenSet: string[] = [], poolSet: string[] = [];
-        for(let event of transferEvents){
-            if(!tokenSet.includes(event.address))
+        for (let event of transferEvents) {
+            if (!tokenSet.includes(event.address))
                 tokenSet.push(event.address);
         }
-        for(let event of swapEvents){
-            if(!tokenSet.includes(event.address))
+        for (let event of swapEvents) {
+            if (!tokenSet.includes(event.address))
                 poolSet.push(event.address);
         }
         return [transferEvents, swapEvents, tokenSet, poolSet];
     }
-    
+
     static decodeErc20Transfers(logs: Log[]): TransferEvent[] {
         let events: TransferEvent[] = []
         for (const log of logs) {
@@ -74,9 +74,9 @@ export class EventDecoder {
         const sqliteHelper = new SqliteHelper(sqlite_database);
         let events: any[] = [];
         for (const log of logs) {
-            if(log.topics.length > 0){
+            if (log.topics.length > 0) {
                 let topic = log.topics[0];
-                if(topic == EventsSignatureMap.UniV2_Swap){
+                if (topic == EventsSignatureMap.UniV2_Swap) {
                     const res = decodeEventLog({
                         abi: [SwapEventABIMap.UniV2_Swap],
                         data: log.data,
@@ -95,7 +95,7 @@ export class EventDecoder {
                         amount1In: res.args.amount1In ? res.args.amount1In : 0n,
                         amount1Out: res.args.amount1Out ? res.args.amount1Out : 0n
                     })
-                }else if(topic == EventsSignatureMap.UniV3_Swap){
+                } else if (topic == EventsSignatureMap.UniV3_Swap) {
                     const res = decodeEventLog({
                         abi: [SwapEventABIMap.UniV3_Swap],
                         data: log.data,
@@ -115,7 +115,7 @@ export class EventDecoder {
                         liquidity: res.args.liquidity ? res.args.liquidity : 0n,
                         tick: res.args.tick ? res.args.tick : 0n
                     })
-                }else if(topic == EventsSignatureMap.BalancerVault_Swap){
+                } else if (topic == EventsSignatureMap.BalancerVault_Swap) {
                     const res = decodeEventLog({
                         abi: [SwapEventABIMap.BalancerVault_Swap],
                         data: log.data,
@@ -133,7 +133,7 @@ export class EventDecoder {
                         amountIn: res.args.amountIn ? res.args.amountIn : 0n,
                         amountOut: res.args.amountOut ? res.args.amountOut : 0n
                     })
-                }else if(topic == EventsSignatureMap.Curve_TokenExchange){
+                } else if (topic == EventsSignatureMap.Curve_TokenExchange) {
                     const res = decodeEventLog({
                         abi: [SwapEventABIMap.Curve_TokenExchange],
                         data: log.data,

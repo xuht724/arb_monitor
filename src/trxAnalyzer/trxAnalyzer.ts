@@ -7,47 +7,20 @@ import { WETHAddress } from "../constants/token";
 import { AllCyclesInDirectedGraphJohnson } from '../arbIdentification/loopHelper/AllCyclesInDirectedGraphJohnson'
 import { identifyByTransfer } from "../arbIdentification/identifyByTransfer";
 import { identifyBySwap } from "../arbIdentification/identifyBySwap";
+import { replacer } from '../utils/utils';
 
-const replacer = (key: string, value: any) => {
-    if (typeof value === "bigint") {
-        return value.toString();
-    } else if (value instanceof Map) {
-        // Convert Map to a plain object
-        const obj: { [key: string]: any } = {};
-        value.forEach((v, k) => {
-            obj[k.toString()] = v;
-        });
-        return obj;
-    }
-    return value;
-};
-
-// 通用的 reviver 函数，将所有纯数字字符串替换成 bigint
-export function reviver(key: string, value: any): any {
-	if (typeof value === 'string' && /^-?\d+$/.test(value)) {
-		return BigInt(value); // 将纯数字字符串替换成 bigint
-	} else if (typeof value === 'object') {
-		// 递归调用 reviver 函数，处理嵌套的对象
-		for (const k in value) {
-			if (value.hasOwnProperty(k)) {
-				value[k] = reviver(k, value[k]);
-			}
-		}
-	}
-	return value;
-}
 
 export class TrxAnalyzer {
 
     static loadData(infoPath: string) {
         const absPath = path.resolve(infoPath);
-        if(fs.existsSync(absPath)){
+        if (fs.existsSync(absPath)) {
             return JSON.parse(fs.readFileSync(absPath, "utf8"));
         }
-        else{
+        else {
             let temp = JSON.stringify({});
             fs.writeFile(absPath, temp, (err) => {
-                if(err){
+                if (err) {
                     console.log('Error creating json:', err);
                 }
             });
@@ -61,9 +34,9 @@ export class TrxAnalyzer {
         fs.writeFileSync(absPath, jsoninfo);
     }
 
-    static async batchGetBlock(startBlock: bigint, endBlock: bigint){
+    static async batchGetBlock(startBlock: bigint, endBlock: bigint) {
         let blockReqs = [];
-        for(let i = startBlock; i < endBlock; i++){
+        for (let i = startBlock; i < endBlock; i++) {
             blockReqs.push({
                 method: 'eth_getBlockByNumber',
                 params: [`0x${i.toString(16)}`, false],
@@ -80,12 +53,12 @@ export class TrxAnalyzer {
         return blocks;
     }
 
-    static async batchGetTrxReceipt(blocks: any){
+    static async batchGetTrxReceipt(blocks: any) {
         let promiseList = [];
-        for(let i = 0; i < blocks.length; i++){
+        for (let i = 0; i < blocks.length; i++) {
             const block = blocks[i].result;
             let trxReqs = [];
-            for(let i = 0; i < block.transactions.length; i++){
+            for (let i = 0; i < block.transactions.length; i++) {
                 trxReqs.push({
                     method: 'eth_getTransactionReceipt',
                     params: [block.transactions[i]],
@@ -104,13 +77,13 @@ export class TrxAnalyzer {
         return res;
     }
 
-    static async analyse(blockNumber: bigint, trxRes: any){
+    static async analyse(blockNumber: bigint, trxRes: any) {
         //const begin = performance.now();
         const node_fetch = await import('node-fetch');
         let trxAnalyzerResult = TrxAnalyzer.loadData(trxAnalyzerResultPath);
-        if(trxAnalyzerResult[blockNumber.toString()] != undefined) return;
+        if (trxAnalyzerResult[blockNumber.toString()] != undefined) return;
 
-        let blockResult:any = {};
+        let blockResult: any = {};
         blockResult["BlockNumber"] = blockNumber;
         let trxResults: any = [];
         let arbTrxResults: any = [];
@@ -120,9 +93,9 @@ export class TrxAnalyzer {
         //console.log(end - begin);
         const iByTransfer = new identifyByTransfer(HTTP_NODE_URL);
         const iBySwap = new identifyBySwap(HTTP_NODE_URL, sqlite_database);
-        for(let i = 0; i < trxReceipts.length; i++){
+        for (let i = 0; i < trxReceipts.length; i++) {
             const trxReceipt = trxReceipts[i].result;
-            if(trxReceipt == undefined) continue;
+            if (trxReceipt == undefined) continue;
             const [transferEvents, swapEvents, tokenSet, poolSet] = await EventDecoder.decode(trxReceipt.logs);
             const [isTransferArb, transferCircles, pivots, maxProfits] = await iByTransfer.identifyArbByTransfer(trxReceipt, transferEvents);
             const [isSwapArb, swapCircles, profits] = await iBySwap.identifyArbBySwap(trxReceipt, swapEvents);
@@ -138,44 +111,44 @@ export class TrxAnalyzer {
             trxResult["swapEvents"] = swapEvents;
             trxResult["tokenSet"] = tokenSet;
             trxResult["poolSet"] = poolSet;
-            if((isTransferArb && pivots![0] != '') || isSwapArb){
+            if ((isTransferArb && pivots![0] != '') || isSwapArb) {
                 // arb trx info
                 const addressTokenProfitMap = TrxAnalyzer.analyseAddressTokenNetProfit(transferEvents);
                 let profitAllPositive = true;
                 const toProfit = addressTokenProfitMap.get(trxReceipt.to);
-                if(toProfit != undefined && toProfit.size > 0){
-                    for(let [token, value] of toProfit){
-                        if(value < 0n) profitAllPositive = false;
+                if (toProfit != undefined && toProfit.size > 0) {
+                    for (let [token, value] of toProfit) {
+                        if (value < 0n) profitAllPositive = false;
                     }
                 }
-                if(!profitAllPositive){
+                if (!profitAllPositive) {
                     trxResults.push(trxResult);
                     continue;
                 }
                 trxResult["netProfitMap"] = addressTokenProfitMap;
                 let bribeRate = 0n;
-                if(toProfit?.has(WETHAddress) && toProfit.get(WETHAddress)! > 0n){
+                if (toProfit?.has(WETHAddress) && toProfit.get(WETHAddress)! > 0n) {
                     trxResult["netProfit"] = toProfit.get(WETHAddress);
                     bribeRate = trxfee / toProfit.get(WETHAddress)!;
                 }
-                else{
+                else {
                     trxResult["netProfit"] = -1;
                     bribeRate = -1n;
                 }
                 trxResult["bribeRate"] = bribeRate;
                 let has = false;
-                for(let j = trxResults.length - 1; j >= 0; j--){
+                for (let j = trxResults.length - 1; j >= 0; j--) {
                     const prePoolSet = trxResults[j]["poolSet"];
-                    for(let p of poolSet){
-                        if(prePoolSet.includes(p)) has = true;
+                    for (let p of poolSet) {
+                        if (prePoolSet.includes(p)) has = true;
                     }
-                    if(has){
+                    if (has) {
                         trxResult["type"] = "backrun";
                         trxResult["backrunTrxIndex"] = j;
                         break;
                     }
                 }
-                if(!has) trxResult["type"] = "afterBlock";
+                if (!has) trxResult["type"] = "afterBlock";
                 arbTrxResults.push(trxResult);
             }
             trxResults.push(trxResult);
@@ -240,7 +213,7 @@ export class TrxAnalyzer {
     //                     }
     //                     if(!graph.has(transferEvents[i].address)) graph.set(transferEvents[i].address, []);
     //                 }
-                    
+
     //                 if(transferEvents[i].to == transferEvents[j].from && addressTokenProfitMap.get(transferEvents[i].to)!.size < 3){
     //                     if(graph.has(transferEvents[i].address)){
     //                         let temp = graph.get(transferEvents[i].address);
