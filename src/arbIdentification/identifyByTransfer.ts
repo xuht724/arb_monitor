@@ -18,11 +18,13 @@ import { LogEntry, ReceiptMetadata } from '../eventDecoder/types/block';
 
 export type DetectArbResByTransfer = {
     isArb: boolean,
-    info?: {
-        arbCircles: string[][],
-        pivots: string[],
-        profits: bigint[]
-    }
+    info?: arbInfo[]
+}
+
+export type arbInfo = {
+    arbCircle: string[],
+    pivot: string,
+    profit: bigint
 }
 
 export class IdentifyByTransfer {
@@ -81,7 +83,7 @@ export class IdentifyByTransfer {
             isArb: false,
             info: undefined
         };
-        let pivots = [], maxProfits = [];
+        let infos: arbInfo[] = []
         for (let circle of circles) {
             let maxProfit = 0n;
             let pivot = ''
@@ -97,16 +99,16 @@ export class IdentifyByTransfer {
                 }
 
             }
-            pivots.push(pivot);
-            maxProfits.push(maxProfit);
+            const info: arbInfo = {
+                arbCircle: circle,
+                pivot: pivot,
+                profit: maxProfit
+            }
+            infos.push(info);
         }
         return {
             isArb: true,
-            info: {
-                arbCircles: circles,
-                pivots: pivots,
-                profits: maxProfits
-            }
+            info: infos
         }
     }
 

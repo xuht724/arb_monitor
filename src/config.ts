@@ -3,11 +3,10 @@
 // "https://eth-mainnet.nodereal.io/v1/abf58db7a57847518733df4dd817bbbc"
 // "https://sparkling-divine-tree.discover.quiknode.pro/614a2336889d86c106f4c654f769bfe26f833fe3/"
 import * as dotenv from "dotenv";
-const info = dotenv.config({ path: './.env' });
+const info = dotenv.config({ path: '/root/code/arb_monitor/.env' });
 
 export const HTTP_NODE_URL = info.parsed!.NODESERVICE
-
 export const sqlite_database = info.parsed!.SQLITEDATABASE;
+export const mongodb_url = info.parsed!.MONGODB;
 
-
-// export const trxAnalyzerResultPath = "src/trxAnalyzerResult.json";
+export const failedBlockNumberPath = "src/failedBlockNumber.txt";

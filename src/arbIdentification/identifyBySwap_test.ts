@@ -6,6 +6,7 @@ import { mainnet } from "viem/chains";
 import { identifyBySwap } from './identifyBySwap';
 import { EventDecoder } from '../eventDecoder/eventDecoder';
 import { HTTP_NODE_URL, sqlite_database } from '../config';
+import { SqliteHelper } from '../sqliteHelper';
 
 async function main() {
     const publicClient = createPublicClient({
@@ -21,7 +22,8 @@ async function main() {
         '7ab15ac8d67bb194fc637afbbfa8b4d9f93fd344c099fe29b92e35624a385b1e',
         '5d9b2ccaf5d40349eec965518bf21da51880c89d04f0e58dd135b92e77c0369f'
     ];
-    const iBySwap = new identifyBySwap(HTTP_NODE_URL, sqlite_database);
+    const sqliteHelper = new SqliteHelper(sqlite_database);
+    const iBySwap = new identifyBySwap(HTTP_NODE_URL, sqliteHelper);
 
     console.log("Start identifyByTransfer test");
     console.log("[test]");
@@ -31,7 +33,7 @@ async function main() {
     let tx = await publicClient.getTransaction({
         hash: `0x${testHashes[0]}`
     })
-    let swapEvents = await EventDecoder.decodeTrxSwapEvents(tx_receipt.logs);
+    let swapEvents = await EventDecoder.decodeTrxSwapEvents(tx_receipt.logs, sqliteHelper);
     let [isArb, circles, profits] = await iBySwap.identifyArbBySwap(tx_receipt, swapEvents);
     if(!isArb) console.log("test failed, nothing returned")
     else{

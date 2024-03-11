@@ -2,116 +2,99 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { TransferEvent } from "../eventDecoder/types/events";
 import { EventDecoder } from "../eventDecoder/eventDecoder";
-import { HTTP_NODE_URL, sqlite_database, trxAnalyzerResultPath } from '../config';
+import { HTTP_NODE_URL } from '../config';
 import { WETHAddress } from "../constants/token";
 import { AllCyclesInDirectedGraphJohnson } from '../arbIdentification/loopHelper/AllCyclesInDirectedGraphJohnson'
-import { identifyByTransfer } from "../arbIdentification/identifyByTransfer";
+import { IdentifyByTransfer } from "../arbIdentification/identifyByTransfer";
 import { identifyBySwap } from "../arbIdentification/identifyBySwap";
 import { replacer } from '../utils/utils';
+import { arbAnalyseResult, arbTrx, arbType, normalTrx } from '../eventDecoder/types/arb';
+import { SqliteHelper } from '../sqliteHelper';
 
 
 export class TrxAnalyzer {
 
-    static loadData(infoPath: string) {
-        const absPath = path.resolve(infoPath);
-        if (fs.existsSync(absPath)) {
-            return JSON.parse(fs.readFileSync(absPath, "utf8"));
-        }
-        else {
-            let temp = JSON.stringify({});
-            fs.writeFile(absPath, temp, (err) => {
-                if (err) {
-                    console.log('Error creating json:', err);
-                }
-            });
-            return {};
-        }
-    }
+    // static loadData(infoPath: string) {
+    //     const absPath = path.resolve(infoPath);
+    //     if (fs.existsSync(absPath)) {
+    //         return JSON.parse(fs.readFileSync(absPath, "utf8"));
+    //     }
+    //     else {
+    //         let temp = JSON.stringify({});
+    //         fs.writeFile(absPath, temp, (err) => {
+    //             if (err) {
+    //                 console.log('Error creating json:', err);
+    //             }
+    //         });
+    //         return {};
+    //     }
+    // }
 
-    static writeData(infoPath: string, info: any) {
-        const absPath = path.resolve(infoPath);
-        const jsoninfo = JSON.stringify(info, replacer);
-        fs.writeFileSync(absPath, jsoninfo);
-    }
+    // static writeData(infoPath: string, info: any) {
+    //     const absPath = path.resolve(infoPath);
+    //     const jsoninfo = JSON.stringify(info, replacer);
+    //     fs.writeFileSync(absPath, jsoninfo);
+    // }
 
-    static async batchGetBlock(startBlock: bigint, endBlock: bigint) {
-        let blockReqs = [];
-        for (let i = startBlock; i < endBlock; i++) {
-            blockReqs.push({
-                method: 'eth_getBlockByNumber',
-                params: [`0x${i.toString(16)}`, false],
-                id: 0,
-                jsonrpc: '2.0'
-            });
-        }
-        const blockRes = await fetch(HTTP_NODE_URL, {
-            method: 'POST',
-            body: JSON.stringify(blockReqs),
-            headers: { 'Content-Type': 'application/json' }
-        });
-        const blocks = await blockRes.json();
-        return blocks;
-    }
+    // static async batchGetBlock(startBlock: bigint, endBlock: bigint) {
+    //     let blockReqs = [];
+    //     for (let i = startBlock; i < endBlock; i++) {
+    //         blockReqs.push({
+    //             method: 'eth_getBlockByNumber',
+    //             params: [`0x${i.toString(16)}`, false],
+    //             id: 0,
+    //             jsonrpc: '2.0'
+    //         });
+    //     }
+    //     const blockRes = await fetch(HTTP_NODE_URL, {
+    //         method: 'POST',
+    //         body: JSON.stringify(blockReqs),
+    //         headers: { 'Content-Type': 'application/json' }
+    //     });
+    //     const blocks = await blockRes.json();
+    //     return blocks;
+    // }
 
-    static async batchGetTrxReceipt(blocks: any) {
-        let promiseList = [];
-        for (let i = 0; i < blocks.length; i++) {
-            const block = blocks[i].result;
-            let trxReqs = [];
-            for (let i = 0; i < block.transactions.length; i++) {
-                trxReqs.push({
-                    method: 'eth_getTransactionReceipt',
-                    params: [block.transactions[i]],
-                    id: i,
-                    jsonrpc: '2.0'
-                });
-            }
-            promiseList.push(fetch(HTTP_NODE_URL, {
-                method: 'POST',
-                body: JSON.stringify(trxReqs),
-                headers: { 'Content-Type': 'application/json' }
-            }));
-            //const trxReceipts = await trxRes.json();
-        }
-        const res = Promise.all(promiseList);
-        return res;
-    }
+    // static async batchGetTrxReceipt(blocks: any) {
+    //     let promiseList = [];
+    //     for (let i = 0; i < blocks.length; i++) {
+    //         const block = blocks[i].result;
+    //         let trxReqs = [];
+    //         for (let i = 0; i < block.transactions.length; i++) {
+    //             trxReqs.push({
+    //                 method: 'eth_getTransactionReceipt',
+    //                 params: [block.transactions[i]],
+    //                 id: i,
+    //                 jsonrpc: '2.0'
+    //             });
+    //         }
+    //         promiseList.push(fetch(HTTP_NODE_URL, {
+    //             method: 'POST',
+    //             body: JSON.stringify(trxReqs),
+    //             headers: { 'Content-Type': 'application/json' }
+    //         }));
+    //         //const trxReceipts = await trxRes.json();
+    //     }
+    //     const res = Promise.all(promiseList);
+    //     return res;
+    // }
 
-    static async analyse(blockNumber: bigint, trxRes: any) {
-        //const begin = performance.now();
+    static async analyse(blockNumber: bigint, trxReceipts: any, sqliteHelper: SqliteHelper) {
         const node_fetch = await import('node-fetch');
-        let trxAnalyzerResult = TrxAnalyzer.loadData(trxAnalyzerResultPath);
-        if (trxAnalyzerResult[blockNumber.toString()] != undefined) return;
 
-        let blockResult: any = {};
-        blockResult["BlockNumber"] = blockNumber;
-        let trxResults: any = [];
-        let arbTrxResults: any = [];
+        let trxResults: (normalTrx | arbTrx)[] = [];
+        let arbTrxResults: arbTrx[] = [];
 
-        const trxReceipts = await trxRes.json();
-        //const end = performance.now();
-        //console.log(end - begin);
-        const iByTransfer = new identifyByTransfer(HTTP_NODE_URL);
-        const iBySwap = new identifyBySwap(HTTP_NODE_URL, sqlite_database);
+        const iBySwap = new identifyBySwap(HTTP_NODE_URL, sqliteHelper);
         for (let i = 0; i < trxReceipts.length; i++) {
-            const trxReceipt = trxReceipts[i].result;
+            const trxReceipt = trxReceipts[i];
             if (trxReceipt == undefined) continue;
-            const [transferEvents, swapEvents, tokenSet, poolSet] = await EventDecoder.decode(trxReceipt.logs);
-            const [isTransferArb, transferCircles, pivots, maxProfits] = await iByTransfer.identifyArbByTransfer(trxReceipt, transferEvents);
+            const [transferEvents, swapEvents, orderEvents, tokenSet, poolSet] = await EventDecoder.decode(trxReceipt.logs, sqliteHelper);
+            const DetectArbResByTransfer = IdentifyByTransfer.identifyArbByTransfer(trxReceipt, transferEvents);
             const [isSwapArb, swapCircles, profits] = await iBySwap.identifyArbBySwap(trxReceipt, swapEvents);
-            let trxResult: any = {};
-            // basic info
-            trxResult["trxIndex"] = parseInt(trxReceipt.transactionIndex, 16);
-            trxResult["gasCost"] = parseInt(trxReceipt.gasUsed, 16);
-            trxResult["gasPrice"] = parseInt(trxReceipt.effectiveGasPrice, 16);
-            const trxfee = BigInt(parseInt(trxReceipt.gasUsed, 16) * parseInt(trxReceipt.effectiveGasPrice, 16));
-            trxResult["trxfee"] = trxfee;
-            // decode result
-            trxResult["transferEvents"] = transferEvents;
-            trxResult["swapEvents"] = swapEvents;
-            trxResult["tokenSet"] = tokenSet;
-            trxResult["poolSet"] = poolSet;
-            if ((isTransferArb && pivots![0] != '') || isSwapArb) {
+            
+            const trxfee = BigInt(trxReceipt.gasUsed) * BigInt(trxReceipt.effectiveGasPrice);
+            if ((DetectArbResByTransfer.isArb && (DetectArbResByTransfer.info![0]).pivot != '') || isSwapArb) {
                 // arb trx info
                 const addressTokenProfitMap = TrxAnalyzer.analyseAddressTokenNetProfit(transferEvents);
                 let profitAllPositive = true;
@@ -122,41 +105,78 @@ export class TrxAnalyzer {
                     }
                 }
                 if (!profitAllPositive) {
+                    const trxResult: normalTrx = {
+                        trxHash: trxReceipt.transactionHash,
+                        blockNumber: blockNumber,
+                        trxIndex: parseInt(trxReceipt.transactionIndex, 16),
+                        gasCost: BigInt(trxReceipt.gasUsed),
+                        gasPrice: BigInt(trxReceipt.effectiveGasPrice),
+                        trxfee: trxfee,
+                        transferEvents: transferEvents,
+                        swapEvents: swapEvents,
+                        orderEvents: orderEvents,
+                        tokenSet: tokenSet,
+                        poolSet: poolSet
+                    }
                     trxResults.push(trxResult);
                     continue;
                 }
-                trxResult["netProfitMap"] = addressTokenProfitMap;
-                let bribeRate = 0n;
+                let trxResult: arbTrx = {
+                    trxHash: trxReceipt.transactionHash,
+                    blockNumber: blockNumber,
+                    trxIndex: parseInt(trxReceipt.transactionIndex, 16),
+                    gasCost: BigInt(trxReceipt.gasUsed),
+                    gasPrice: BigInt(trxReceipt.effectiveGasPrice),
+                    trxfee: trxfee,
+                    transferEvents: transferEvents,
+                    swapEvents: swapEvents,
+                    orderEvents: orderEvents,
+                    tokenSet: tokenSet,
+                    poolSet: poolSet,
+                    netProfitMap: addressTokenProfitMap,
+                    netWETHProfit: -1n,
+                    bribeRate: -1,
+                    type: arbType.UNKNOWN,
+                    trxReceipt: trxReceipt,
+                    DetectArbResByTransfer: DetectArbResByTransfer
+                }
                 if (toProfit?.has(WETHAddress) && toProfit.get(WETHAddress)! > 0n) {
-                    trxResult["netProfit"] = toProfit.get(WETHAddress);
-                    bribeRate = trxfee / toProfit.get(WETHAddress)!;
+                    trxResult.netWETHProfit = toProfit.get(WETHAddress)!;
+                    trxResult.bribeRate = (Number(trxReceipt.gasUsed) * Number(trxReceipt.effectiveGasPrice)) / Number(toProfit.get(WETHAddress)!);
                 }
-                else {
-                    trxResult["netProfit"] = -1;
-                    bribeRate = -1n;
-                }
-                trxResult["bribeRate"] = bribeRate;
                 let has = false;
                 for (let j = trxResults.length - 1; j >= 0; j--) {
-                    const prePoolSet = trxResults[j]["poolSet"];
+                    const prePoolSet = trxResults[j].poolSet;
                     for (let p of poolSet) {
                         if (prePoolSet.includes(p)) has = true;
                     }
                     if (has) {
-                        trxResult["type"] = "backrun";
-                        trxResult["backrunTrxIndex"] = j;
+                        trxResult.type = arbType.BACKRUN;
+                        trxResult.backrunTrx = trxResults[j];
                         break;
                     }
                 }
-                if (!has) trxResult["type"] = "afterBlock";
+                if (!has) trxResult.type = arbType.AFTERBLOCK;
                 arbTrxResults.push(trxResult);
+                trxResults.push(trxResult);
+                continue;
+            }
+            const trxResult: normalTrx = {
+                trxHash: trxReceipt.transactionHash,
+                blockNumber: blockNumber,
+                trxIndex: parseInt(trxReceipt.transactionIndex, 16),
+                gasCost: BigInt(trxReceipt.gasUsed),
+                gasPrice: BigInt(trxReceipt.effectiveGasPrice),
+                trxfee: trxfee,
+                transferEvents: transferEvents,
+                swapEvents: swapEvents,
+                orderEvents: orderEvents,
+                tokenSet: tokenSet,
+                poolSet: poolSet
             }
             trxResults.push(trxResult);
         }
-        blockResult["trx"] = trxResults;
-        blockResult["arbtrx"] = arbTrxResults;
-        trxAnalyzerResult[blockNumber.toString()] = blockResult;
-        TrxAnalyzer.writeData(trxAnalyzerResultPath, trxAnalyzerResult);
+        return arbTrxResults;
     }
 
     static analyseAddressTokenNetProfit(events: TransferEvent[]) {

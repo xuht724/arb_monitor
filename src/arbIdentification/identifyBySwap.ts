@@ -22,12 +22,12 @@ export class identifyBySwap{
     v2PoolTokenMap: Map<string, string[]>;
     v3PoolTokenMap: Map<string, string[]>;
 
-    constructor(HTTP_NODE_URL: string, sqlite_database: string) {
+    constructor(HTTP_NODE_URL: string, sqliteHelper: SqliteHelper) {
         this.publicClient = createPublicClient({
             chain: mainnet,
             transport: http(HTTP_NODE_URL),
         });
-        this.sqliteHelper = new SqliteHelper(sqlite_database);
+        this.sqliteHelper = sqliteHelper;
         this.v2PoolTokenMap = new Map<string, string[]>();
         this.v3PoolTokenMap = new Map<string, string[]>();
         this.loadPoolTokenMap();

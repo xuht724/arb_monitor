@@ -47,6 +47,7 @@ export class ChainStateHelper {
             // }
             let receipts = downloadReceipts.map((res: any) => {
                 let receiptRes = res.result;
+                if(receiptRes == undefined) return undefined;
                 return {
                     transactionHash: receiptRes.transactionHash,
                     blockHash: receiptRes.blockHash,

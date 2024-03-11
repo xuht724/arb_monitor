@@ -1,3 +1,4 @@
+import { BitwiseFilter } from "mongodb";
 import { SwapEvent, PoolType, Protocol } from "../constants/events"
 
 export type TransferEvent = {
@@ -7,10 +8,18 @@ export type TransferEvent = {
     value: bigint
 }
 
-export type UniV2SwapEvent = {
+export type SwapEvents = UniV2SwapEvent | UniV3SwapEvent | BalancerVaultSwapEvent | CurveTokenExchangeEvent;
+export type OrderEvents = OneInchOrderFilledEvent | ZeroXLimitOrderFilledEvent | UniswapXFillEvent;
+
+
+export type basicEventInfo = {
     poolType: PoolType,
     protocol: Protocol,
-    address: string,
+    address: string
+}                        
+
+export type UniV2SwapEvent = {
+    basicInfo: basicEventInfo,
     from: string,
     to: string,
     amount0In: bigint,
@@ -20,9 +29,7 @@ export type UniV2SwapEvent = {
 }
 
 export type UniV3SwapEvent = {
-    poolType: PoolType,
-    protocol: Protocol,
-    address: string,
+    basicInfo: basicEventInfo,
     from: string,
     to: string,
     amount0: bigint,
@@ -33,9 +40,7 @@ export type UniV3SwapEvent = {
 }
 
 export type BalancerVaultSwapEvent = {
-    poolType: PoolType,
-    protocol: Protocol,
-    address: string,
+    basicInfo: basicEventInfo,
     poolId: string,
     tokenIn: string,
     tokenOut: string,
@@ -44,12 +49,40 @@ export type BalancerVaultSwapEvent = {
 }
 
 export type CurveTokenExchangeEvent = {
-    poolType: PoolType,
-    protocol: Protocol,
-    address: string,
+    basicInfo: basicEventInfo,
     buyer: string,
     sold_id: number,
     tokens_sold: bigint,
     bought_id: number,
     tokens_bought: bigint
+}
+
+export type OneInchOrderFilledEvent = {
+    basicInfo: basicEventInfo,
+    maker: string,
+    orderHash: string,
+    remaining: bigint
+}
+
+export type ZeroXLimitOrderFilledEvent = {
+    basicInfo: basicEventInfo,
+    orderHash: string,
+    maker: string,
+    taker: string,
+    feeRecipient: string,
+    makerToken: string,
+    takerToken: string,
+    takerTokenFilledAmount: bigint,
+    makerTokenFilledAmount: bigint,
+    takerTokenFeeFilledAmount: bigint,
+    protocolFeePaid: bigint,
+    pool: string
+}
+
+export type UniswapXFillEvent = {
+    basicInfo: basicEventInfo,
+    orderHash: string,
+    filler: string,
+    swapper: string,
+    nonce: bigint
 }
